@@ -2,7 +2,6 @@ package twitter
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"sync"
@@ -50,8 +49,6 @@ type StreamParams struct {
 // https://dev.twitter.com/streaming/reference/post/statuses/filter
 func (srv *StreamService) Filter(params *StreamParams) (*Stream, error) {
 	req, err := srv.filteredStream.New().Get("stream").QueryStruct(params).Request()
-	fmt.Println(req.URL)
-	fmt.Printf("%v\n", req.Header)
 	if err != nil {
 		return nil, err
 	}
