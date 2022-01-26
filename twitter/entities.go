@@ -4,47 +4,68 @@ package twitter
 // https://developer.twitter.com/en/docs/tweets/data-dictionary/overview/entities-object
 // TODO: symbols
 type Entities struct {
-	Hashtags     []HashtagEntity `json:"hashtags"`
-	Media        []MediaEntity   `json:"media"`
-	Urls         []URLEntity     `json:"urls"`
-	UserMentions []MentionEntity `json:"user_mentions"`
+	Hashtags     []TagEntity         `json:"hashtags"`
+	Urls         []URLEntity         `json:"urls"`
+	UserMentions []MentionEntity     `json:"user_mentions"`
+	Annotations  []ContextAnnotation `json:"annotations"`
+	Cashtags     []TagEntity         `json:"cashtags"`
 }
 
-// HashtagEntity represents a hashtag which has been parsed from text.
-type HashtagEntity struct {
-	Indices Indices `json:"indices"`
-	Text    string  `json:"text"`
+// TagEntity represents a hashtag or cashtag from the text.
+type TagEntity struct {
+	Start int64  `json:"start"`
+	End   int64  `json:"end"`
+	Tag   string `json:"tag"`
+}
+
+// AnnotationEntity represents one of Twitter's context annotations.
+type AnnotationEntity struct {
+	Start          int64  `json:"start"`
+	End            int64  `json:"end"`
+	Probability    int64  `json:"probability"`
+	Type           string `json:"type"`
+	NormalizedText string `json:"normalized_text"`
 }
 
 // URLEntity represents a URL which has been parsed from text.
 type URLEntity struct {
-	Indices     Indices `json:"indices"`
-	DisplayURL  string  `json:"display_url"`
-	ExpandedURL string  `json:"expanded_url"`
-	URL         string  `json:"url"`
+	Start       int64  `json:"start"`
+	End         int64  `json:"end"`
+	DisplayURL  string `json:"display_url"`
+	ExpandedURL string `json:"expanded_url"`
+	URL         string `json:"url"`
+	UnwoundURL  string `json:"unwound_url"`
 }
 
 // MediaEntity represents media elements associated with a Tweet.
 type MediaEntity struct {
-	URLEntity
-	ID                int64      `json:"id"`
-	IDStr             string     `json:"id_str"`
-	MediaURL          string     `json:"media_url"`
-	MediaURLHttps     string     `json:"media_url_https"`
-	SourceStatusID    int64      `json:"source_status_id"`
-	SourceStatusIDStr string     `json:"source_status_id_str"`
-	Type              string     `json:"type"`
-	Sizes             MediaSizes `json:"sizes"`
-	VideoInfo         VideoInfo  `json:"video_info"`
+	MediaKey         string       `json:"media_key"`
+	DurationMillis   int64        `json:"duration_ms"`
+	Height           int64        `json:"height"`
+	NonPublicMetrics MediaMetrics `json:"non_public_metrics"`
+	OrganicMetrics   MediaMetrics `json:"organic_metrics"`
+	Type             string       `json:"type"`
+	PreviewImageURL  string       `json:"preview_image_url"`
+	PromotedMetrics  MediaMetrics `json:"promoted_metrics"`
+	PublicMetrics    MediaMetrics `json:"public_metrics"`
+	Width            int64        `json:"width"`
+	AltText          string       `json:"alt_text"`
+}
+
+type MediaMetrics struct {
+	Playback0Count   int64 `json:"playback_0_count,omitempty"`
+	Playback25Count  int64 `json:"playback_25_count,omitempty"`
+	Playback50Count  int64 `json:"playback_50_count,omitempty"`
+	Playback75Count  int64 `json:"playback_75_count,omitempty"`
+	Playback100Count int64 `json:"playback_100_count,omitempty"`
+	ViewCount        int64 `json:"view_count,omitempty"`
 }
 
 // MentionEntity represents Twitter user mentions parsed from text.
 type MentionEntity struct {
-	Indices    Indices `json:"indices"`
-	ID         int64   `json:"id"`
-	IDStr      string  `json:"id_str"`
-	Name       string  `json:"name"`
-	ScreenName string  `json:"screen_name"`
+	Start    int64  `json:"start"`
+	End      int64  `json:"end"`
+	Username string `json:"username"`
 }
 
 // UserEntities contain Entities parsed from User url and description fields.
@@ -58,19 +79,6 @@ type UserEntities struct {
 // https://developer.twitter.com/en/docs/tweets/data-dictionary/overview/extended-entities-object
 type ExtendedEntity struct {
 	Media []MediaEntity `json:"media"`
-}
-
-// Indices represent the start and end offsets within text.
-type Indices [2]int
-
-// Start returns the index at which an entity starts, inclusive.
-func (i Indices) Start() int {
-	return i[0]
-}
-
-// End returns the index at which an entity ends, exclusive.
-func (i Indices) End() int {
-	return i[1]
 }
 
 // MediaSizes contain the different size media that are available.

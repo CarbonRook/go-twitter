@@ -1,33 +1,25 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
-	"github.com/coreos/pkg/flagutil"
 	"github.com/dghubble/go-twitter/twitter"
 	"github.com/dghubble/oauth1"
 )
 
 func main() {
-	flags := flag.NewFlagSet("user-auth", flag.ExitOnError)
-	consumerKey := flags.String("consumer-key", "", "Twitter Consumer Key")
-	consumerSecret := flags.String("consumer-secret", "", "Twitter Consumer Secret")
-	accessToken := flags.String("access-token", "", "Twitter Access Token")
-	accessSecret := flags.String("access-secret", "", "Twitter Access Secret")
-	flags.Parse(os.Args[1:])
-	flagutil.SetFlagsFromEnv(flags, "TWITTER")
 
-	if *consumerKey == "" || *consumerSecret == "" || *accessToken == "" || *accessSecret == "" {
-		log.Fatal("Consumer key/secret and Access token/secret required")
-	}
+	consumerKey := os.Getenv("TWITTER_CONSUMER_KEY")
+	consumerSecret := os.Getenv("TWITTER_CONSUMER_SECRET")
+	accessToken := os.Getenv("TWITTER_ACCESS_TOKEN")
+	accessSecret := os.Getenv("TWITTER_ACCESS_SECRET")
 
-	config := oauth1.NewConfig(*consumerKey, *consumerSecret)
-	token := oauth1.NewToken(*accessToken, *accessSecret)
+	config := oauth1.NewConfig(consumerKey, consumerSecret)
+	token := oauth1.NewToken(accessToken, accessSecret)
 	// OAuth1 http.Client will automatically authorize Requests
 	httpClient := config.Client(oauth1.NoContext, token)
 
@@ -39,6 +31,9 @@ func main() {
 	demux.Tweet = func(tweet *twitter.Tweet) {
 		fmt.Println(tweet.Text)
 	}
+	demux.StreamData = func(sd *twitter.StreamData) {
+		fmt.Printf("%v\n", sd)
+	}
 	demux.DM = func(dm *twitter.DirectMessage) {
 		fmt.Println(dm.SenderID)
 	}
@@ -49,34 +44,15 @@ func main() {
 	fmt.Println("Starting Stream...")
 
 	// FILTER
-	filterParams := &twitter.StreamFilterParams{
-		Track:         []string{"cat"},
-		StallWarnings: twitter.Bool(true),
+	filterParams := &twitter.StreamParams{
+		TweetFields: []string{"created_at", "text", "id", "lang", "public_metrics", "referenced_tweets", "conversation_id", "entities"},
+		Expansions:  []string{"author_id", "referenced_tweets.id", "in_reply_to_user_id", "entities.mentions.username", "referenced_tweets.id.author_id"},
+		UserFields:  []string{"id", "name", "username", "public_metrics", "verified"},
 	}
 	stream, err := client.Streams.Filter(filterParams)
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	// USER (quick test: auth'd user likes a tweet -> event)
-	// userParams := &twitter.StreamUserParams{
-	// 	StallWarnings: twitter.Bool(true),
-	// 	With:          "followings",
-	// 	Language:      []string{"en"},
-	// }
-	// stream, err := client.Streams.User(userParams)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-
-	// SAMPLE
-	// sampleParams := &twitter.StreamSampleParams{
-	// 	StallWarnings: twitter.Bool(true),
-	// }
-	// stream, err := client.Streams.Sample(sampleParams)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
 
 	// Receive messages until stopped or stream quits
 	go demux.HandleChan(stream.Messages)

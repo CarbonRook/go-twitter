@@ -11,43 +11,34 @@ import (
 // Tweet represents a Twitter Tweet, previously called a status.
 // https://dev.twitter.com/overview/api/tweets
 type Tweet struct {
-	Coordinates          *Coordinates           `json:"coordinates"`
-	CreatedAt            string                 `json:"created_at"`
-	CurrentUserRetweet   *TweetIdentifier       `json:"current_user_retweet"`
-	Entities             *Entities              `json:"entities"`
-	FavoriteCount        int                    `json:"favorite_count"`
-	Favorited            bool                   `json:"favorited"`
-	FilterLevel          string                 `json:"filter_level"`
-	ID                   int64                  `json:"id"`
-	IDStr                string                 `json:"id_str"`
-	InReplyToScreenName  string                 `json:"in_reply_to_screen_name"`
-	InReplyToStatusID    int64                  `json:"in_reply_to_status_id"`
-	InReplyToStatusIDStr string                 `json:"in_reply_to_status_id_str"`
-	InReplyToUserID      int64                  `json:"in_reply_to_user_id"`
-	InReplyToUserIDStr   string                 `json:"in_reply_to_user_id_str"`
-	Lang                 string                 `json:"lang"`
-	PossiblySensitive    bool                   `json:"possibly_sensitive"`
-	QuoteCount           int                    `json:"quote_count"`
-	ReplyCount           int                    `json:"reply_count"`
-	RetweetCount         int                    `json:"retweet_count"`
-	Retweeted            bool                   `json:"retweeted"`
-	RetweetedStatus      *Tweet                 `json:"retweeted_status"`
-	Source               string                 `json:"source"`
-	Scopes               map[string]interface{} `json:"scopes"`
-	Text                 string                 `json:"text"`
-	FullText             string                 `json:"full_text"`
-	DisplayTextRange     Indices                `json:"display_text_range"`
-	Place                *Place                 `json:"place"`
-	Truncated            bool                   `json:"truncated"`
-	User                 *User                  `json:"user"`
-	WithheldCopyright    bool                   `json:"withheld_copyright"`
-	WithheldInCountries  []string               `json:"withheld_in_countries"`
-	WithheldScope        string                 `json:"withheld_scope"`
-	ExtendedEntities     *ExtendedEntity        `json:"extended_entities"`
-	ExtendedTweet        *ExtendedTweet         `json:"extended_tweet"`
-	QuotedStatusID       int64                  `json:"quoted_status_id"`
-	QuotedStatusIDStr    string                 `json:"quoted_status_id_str"`
-	QuotedStatus         *Tweet                 `json:"quoted_status"`
+	Attachments struct {
+		MediaKeys []string `json:"media_keys,omitempty"`
+		PollID    []string `json:"poll_id,omitempty"`
+	} `json:"attachments,omitempty"`
+	AuthorID           string               `json:"author_id"`
+	ContextAnnotations []*ContextAnnotation `json:"context_annotations"`
+	ConversationID     string               `json:"conversation_id"`
+	CreatedAt          string               `json:"created_at"`
+	Entities           Entities             `json:"entities"`
+	Geo                *Geo                 `json:"geo,omitempty"`
+	Includes           *Includes            `json:"includes"`
+	ID                 string               `json:"id"`
+	InReplyToStatusID  string               `json:"in_reply_to_status_id"`
+	InReplyToUserID    string               `json:"in_reply_to_user_id"`
+	Lang               string               `json:"lang"`
+	PossiblySensitive  bool                 `json:"possibly_sensitive"`
+	ReferencedTweets   struct {
+		Type string `json:"type"`
+		ID   string `json:"id"`
+	} `json:"referenced_tweets,omitempty"`
+	PublicMetrics    *Metrics  `json:"public_metrics,omitempty"`
+	NonPublicMetrics *Metrics  `json:"non_public_metrics,omitempty"`
+	OrganicMetrices  *Metrics  `json:"organic_metrics,omitempty"`
+	PromotedMetrics  *Metrics  `json:"promoted_metrics,omitempty"`
+	ReplySettings    string    `json:"reply_settings"`
+	Source           string    `json:"source"`
+	Text             string    `json:"text"`
+	Withheld         *Withheld `json:"withheld"`
 }
 
 // CreatedAtTime returns the time a tweet was created.
@@ -55,49 +46,66 @@ func (t Tweet) CreatedAtTime() (time.Time, error) {
 	return time.Parse(time.RubyDate, t.CreatedAt)
 }
 
-// ExtendedTweet represents fields embedded in extended Tweets when served in
-// compatibility mode (default).
-// https://dev.twitter.com/overview/api/upcoming-changes-to-tweets
-type ExtendedTweet struct {
-	FullText         string          `json:"full_text"`
-	DisplayTextRange Indices         `json:"display_text_range"`
-	Entities         *Entities       `json:"entities"`
-	ExtendedEntities *ExtendedEntity `json:"extended_entities"`
+type Geo struct {
+	PlaceID string `json:"place_id"`
+}
+
+// Withheld represents the reasons why a tweet may be withheld (copyright) and from which countries.
+type Withheld struct {
+	Copyright   bool     `json:"copyright"`
+	CountryCode []string `json:"country_code"`
+	Scope       string   `json:"scope"`
+}
+
+//Metrics list metrics associated with the tweet (counts of retweets, replies, likes, quotes).
+type Metrics struct {
+	RetweetCount int64 `json:"retweet_count"`
+	ReplyCount   int64 `json:"reply_count"`
+	LikeCount    int64 `json:"like_count"`
+	QuoteCount   int64 `json:"quote_count,omitempty"`
+}
+
+type ContextAnnotation struct {
+	Domain struct {
+		ID          string `json:"id"`
+		Name        string `json:"name"`
+		Description string `json:"description"`
+	} `json:"domain"`
+	Entity struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	}
+}
+
+type Poll struct {
+	ID              string       `json:"id"`
+	Options         []PollOption `json:"options"`
+	DurationMinutes int64        `json:"duration_minutes"`
+	End             string       `json:"end_datetime"`
+	VotingStatus    string       `json:"voting_status"`
+}
+
+type PollOption struct {
+	Position int64  `json:"position"`
+	Label    string `json:"label"`
+	Votes    int64  `json:"votes"`
 }
 
 // Place represents a Twitter Place / Location
 // https://dev.twitter.com/overview/api/places
 type Place struct {
-	Attributes  map[string]string `json:"attributes"`
-	BoundingBox *BoundingBox      `json:"bounding_box"`
-	Country     string            `json:"country"`
-	CountryCode string            `json:"country_code"`
-	FullName    string            `json:"full_name"`
-	Geometry    *BoundingBox      `json:"geometry"`
-	ID          string            `json:"id"`
-	Name        string            `json:"name"`
-	PlaceType   string            `json:"place_type"`
-	Polylines   []string          `json:"polylines"`
-	URL         string            `json:"url"`
-}
-
-// BoundingBox represents the bounding coordinates (longitude, latitutde)
-// defining the bounds of a box containing a Place entity.
-type BoundingBox struct {
-	Coordinates [][][2]float64 `json:"coordinates"`
-	Type        string         `json:"type"`
-}
-
-// Coordinates are pairs of longitude and latitude locations.
-type Coordinates struct {
-	Coordinates [2]float64 `json:"coordinates"`
-	Type        string     `json:"type"`
-}
-
-// TweetIdentifier represents the id by which a Tweet can be identified.
-type TweetIdentifier struct {
-	ID    int64  `json:"id"`
-	IDStr string `json:"id_str"`
+	FullName        string   `json:"full_name"`
+	ID              string   `json:"id"`
+	ContainedWithin []string `json:"contained_within"`
+	Country         string   `json:"country"`
+	CountryCode     string   `json:"country_code"`
+	Geo             struct {
+		Type        string    `json:"type"`
+		BoundingBox []float64 `json:"bbox"`
+		Properties  struct{}  `json:"properties"`
+	} `json:"geo"`
+	Name      string `json:"name"`
+	PlaceType string `json:"place_type"`
 }
 
 // StatusService provides methods for accessing Twitter status API endpoints.

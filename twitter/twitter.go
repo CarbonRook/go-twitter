@@ -6,7 +6,7 @@ import (
 	"github.com/dghubble/sling"
 )
 
-const twitterAPI = "https://api.twitter.com/1.1/"
+const twitterAPI = "https://api.twitter.com/2/"
 
 // Client is a Twitter client for making Twitter API requests.
 type Client struct {

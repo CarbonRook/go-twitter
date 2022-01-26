@@ -12,122 +12,53 @@ import (
 )
 
 const (
-	userAgent    = "go-twitter v0.1"
-	publicStream = "https://stream.twitter.com/1.1/"
-	userStream   = "https://userstream.twitter.com/1.1/"
-	siteStream   = "https://sitestream.twitter.com/1.1/"
+	userAgent              = "go-twitter v0.1"
+	filteredStreamEndpoint = "tweets/search"
+	sampledStreamEndpoint  = "tweets/sample"
 )
 
 // StreamService provides methods for accessing the Twitter Streaming API.
 type StreamService struct {
-	client *http.Client
-	public *sling.Sling
-	user   *sling.Sling
-	site   *sling.Sling
+	client         *http.Client
+	filteredStream *sling.Sling
+	sampledStream  *sling.Sling
 }
 
 // newStreamService returns a new StreamService.
 func newStreamService(client *http.Client, sling *sling.Sling) *StreamService {
 	sling.Set("User-Agent", userAgent)
 	return &StreamService{
-		client: client,
-		public: sling.New().Base(publicStream).Path("statuses/"),
-		user:   sling.New().Base(userStream),
-		site:   sling.New().Base(siteStream),
+		client:         client,
+		filteredStream: sling.Path(filteredStreamEndpoint),
+		sampledStream:  sling.Path(sampledStreamEndpoint),
 	}
 }
 
 // StreamFilterParams are parameters for StreamService.Filter.
-type StreamFilterParams struct {
-	FilterLevel   string   `url:"filter_level,omitempty"`
-	Follow        []string `url:"follow,omitempty,comma"`
-	Language      []string `url:"language,omitempty,comma"`
-	Locations     []string `url:"locations,omitempty,comma"`
-	StallWarnings *bool    `url:"stall_warnings,omitempty"`
-	Track         []string `url:"track,omitempty,comma"`
+type StreamParams struct {
+	Expansions      []string `url:"expansions,omitempty,comma"`
+	MediaFields     []string `url:"media.fields,omitempty,comma"`
+	PlaceFields     []string `url:"place.fields,omitempty,comma"`
+	PollFields      []string `url:"poll.fields,omitempty,comma"`
+	TweetFields     []string `url:"tweet.fields,omitempty,comma"`
+	UserFields      []string `url:"user.fields,omitempty,comma"`
+	BackfillMinutes int      `url:"backfill_minutes,omitempty"`
 }
 
 // Filter returns messages that match one or more filter predicates.
 // https://dev.twitter.com/streaming/reference/post/statuses/filter
-func (srv *StreamService) Filter(params *StreamFilterParams) (*Stream, error) {
-	req, err := srv.public.New().Post("filter.json").QueryStruct(params).Request()
+func (srv *StreamService) Filter(params *StreamParams) (*Stream, error) {
+	req, err := srv.filteredStream.New().Get("stream").QueryStruct(params).Request()
 	if err != nil {
 		return nil, err
 	}
 	return newStream(srv.client, req), nil
-}
-
-// StreamSampleParams are the parameters for StreamService.Sample.
-type StreamSampleParams struct {
-	StallWarnings *bool    `url:"stall_warnings,omitempty"`
-	Language      []string `url:"language,omitempty,comma"`
 }
 
 // Sample returns a small sample of public stream messages.
 // https://dev.twitter.com/streaming/reference/get/statuses/sample
-func (srv *StreamService) Sample(params *StreamSampleParams) (*Stream, error) {
-	req, err := srv.public.New().Get("sample.json").QueryStruct(params).Request()
-	if err != nil {
-		return nil, err
-	}
-	return newStream(srv.client, req), nil
-}
-
-// StreamUserParams are the parameters for StreamService.User.
-type StreamUserParams struct {
-	FilterLevel   string   `url:"filter_level,omitempty"`
-	Language      []string `url:"language,omitempty,comma"`
-	Locations     []string `url:"locations,omitempty,comma"`
-	Replies       string   `url:"replies,omitempty"`
-	StallWarnings *bool    `url:"stall_warnings,omitempty"`
-	Track         []string `url:"track,omitempty,comma"`
-	With          string   `url:"with,omitempty"`
-}
-
-// User returns a stream of messages specific to the authenticated User.
-// https://dev.twitter.com/streaming/reference/get/user
-func (srv *StreamService) User(params *StreamUserParams) (*Stream, error) {
-	req, err := srv.user.New().Get("user.json").QueryStruct(params).Request()
-	if err != nil {
-		return nil, err
-	}
-	return newStream(srv.client, req), nil
-}
-
-// StreamSiteParams are the parameters for StreamService.Site.
-type StreamSiteParams struct {
-	FilterLevel   string   `url:"filter_level,omitempty"`
-	Follow        []string `url:"follow,omitempty,comma"`
-	Language      []string `url:"language,omitempty,comma"`
-	Replies       string   `url:"replies,omitempty"`
-	StallWarnings *bool    `url:"stall_warnings,omitempty"`
-	With          string   `url:"with,omitempty"`
-}
-
-// Site returns messages for a set of users.
-// Requires special permission to access.
-// https://dev.twitter.com/streaming/reference/get/site
-func (srv *StreamService) Site(params *StreamSiteParams) (*Stream, error) {
-	req, err := srv.site.New().Get("site.json").QueryStruct(params).Request()
-	if err != nil {
-		return nil, err
-	}
-	return newStream(srv.client, req), nil
-}
-
-// StreamFirehoseParams are the parameters for StreamService.Firehose.
-type StreamFirehoseParams struct {
-	Count         int      `url:"count,omitempty"`
-	FilterLevel   string   `url:"filter_level,omitempty"`
-	Language      []string `url:"language,omitempty,comma"`
-	StallWarnings *bool    `url:"stall_warnings,omitempty"`
-}
-
-// Firehose returns all public messages and statuses.
-// Requires special permission to access.
-// https://dev.twitter.com/streaming/reference/get/statuses/firehose
-func (srv *StreamService) Firehose(params *StreamFirehoseParams) (*Stream, error) {
-	req, err := srv.public.New().Get("firehose.json").QueryStruct(params).Request()
+func (srv *StreamService) Sample(params *StreamParams) (*Stream, error) {
+	req, err := srv.sampledStream.New().Get("stream").QueryStruct(params).Request()
 	if err != nil {
 		return nil, err
 	}
@@ -147,6 +78,25 @@ type Stream struct {
 	done     chan struct{}
 	group    *sync.WaitGroup
 	body     io.Closer
+}
+
+type StreamData struct {
+	Tweet         *Tweet          `json:"data,omitempty"`
+	Includes      *Includes       `json:"includes,omitempty"`
+	Attachments   *ExtendedEntity `json:"attachments"`
+	MatchingRules []struct {
+		Id  string `json:"id,omitempty"`
+		Tag string `json:"tag,omitempty"`
+	} `json:"matching_rules,omitempty"`
+}
+
+// Includes represents the list of entities that a tweet includes, such as other tweets, users, media, places or polls.
+type Includes struct {
+	Tweets []*Tweet       `json:"tweets"`
+	Users  []*User        `json:"users"`
+	Media  []*MediaEntity `json:"media"`
+	Places []*Place       `json:"places"`
+	Polls  []*Poll        `json:"polls"`
 }
 
 // newStream creates a Stream and starts a goroutine to retry connecting and
@@ -311,6 +261,10 @@ func decodeMessage(token []byte, data map[string]interface{}) interface{} {
 		event := new(Event)
 		json.Unmarshal(token, event)
 		return event
+	} else if hasPath(data, "matching_rules") {
+		streamData := new(StreamData)
+		json.Unmarshal(token, streamData)
+		return streamData
 	}
 	// message type unknown, return the data map[string]interface{}
 	return data
