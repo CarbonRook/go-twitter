@@ -1,6 +1,7 @@
 package twitter
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/dghubble/sling"
@@ -27,6 +28,29 @@ type Client struct {
 	Timelines      *TimelineService
 	Trends         *TrendsService
 	Users          *UserService
+}
+
+func NewClientWithBearer(httpClient *http.Client, bearerToken string) *Client {
+	base := sling.New().Client(httpClient).Base(twitterAPI)
+	base.Set("Authorization", fmt.Sprintf("Bearer %s", bearerToken))
+	return &Client{
+		sling:          base,
+		Accounts:       newAccountService(base.New()),
+		DirectMessages: newDirectMessageService(base.New()),
+		Favorites:      newFavoriteService(base.New()),
+		Followers:      newFollowerService(base.New()),
+		Friends:        newFriendService(base.New()),
+		Friendships:    newFriendshipService(base.New()),
+		Lists:          newListService(base.New()),
+		RateLimits:     newRateLimitService(base.New()),
+		Search:         newSearchService(base.New()),
+		PremiumSearch:  newPremiumSearchService(base.New()),
+		Statuses:       newStatusService(base.New()),
+		Streams:        newStreamService(httpClient, base.New()),
+		Timelines:      newTimelineService(base.New()),
+		Trends:         newTrendsService(base.New()),
+		Users:          newUserService(base.New()),
+	}
 }
 
 // NewClient returns a new Client.

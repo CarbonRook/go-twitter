@@ -2,6 +2,7 @@ package twitter
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"sync"
@@ -13,8 +14,8 @@ import (
 
 const (
 	userAgent              = "go-twitter v0.1"
-	filteredStreamEndpoint = "tweets/search"
-	sampledStreamEndpoint  = "tweets/sample"
+	filteredStreamEndpoint = "tweets/search/"
+	sampledStreamEndpoint  = "tweets/sample/"
 )
 
 // StreamService provides methods for accessing the Twitter Streaming API.
@@ -29,8 +30,8 @@ func newStreamService(client *http.Client, sling *sling.Sling) *StreamService {
 	sling.Set("User-Agent", userAgent)
 	return &StreamService{
 		client:         client,
-		filteredStream: sling.Path(filteredStreamEndpoint),
-		sampledStream:  sling.Path(sampledStreamEndpoint),
+		filteredStream: sling.New().Base(twitterAPI).Path(filteredStreamEndpoint),
+		sampledStream:  sling.New().Base(twitterAPI).Path(sampledStreamEndpoint),
 	}
 }
 
@@ -49,6 +50,8 @@ type StreamParams struct {
 // https://dev.twitter.com/streaming/reference/post/statuses/filter
 func (srv *StreamService) Filter(params *StreamParams) (*Stream, error) {
 	req, err := srv.filteredStream.New().Get("stream").QueryStruct(params).Request()
+	fmt.Println(req.URL)
+	fmt.Printf("%v\n", req.Header)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +86,7 @@ type Stream struct {
 type StreamData struct {
 	Tweet         *Tweet          `json:"data,omitempty"`
 	Includes      *Includes       `json:"includes,omitempty"`
-	Attachments   *ExtendedEntity `json:"attachments"`
+	Attachments   *ExtendedEntity `json:"attachments,omitempty"`
 	MatchingRules []struct {
 		Id  string `json:"id,omitempty"`
 		Tag string `json:"tag,omitempty"`

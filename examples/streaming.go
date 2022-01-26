@@ -1,30 +1,28 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
-	"github.com/dghubble/go-twitter/twitter"
-	"github.com/dghubble/oauth1"
+	"github.com/carbonrook/go-twitter/twitter"
 )
 
 func main() {
 
-	consumerKey := os.Getenv("TWITTER_CONSUMER_KEY")
-	consumerSecret := os.Getenv("TWITTER_CONSUMER_SECRET")
-	accessToken := os.Getenv("TWITTER_ACCESS_TOKEN")
-	accessSecret := os.Getenv("TWITTER_ACCESS_SECRET")
+	bearerToken := os.Getenv("TWITTER_BEARER_TOKEN")
 
-	config := oauth1.NewConfig(consumerKey, consumerSecret)
-	token := oauth1.NewToken(accessToken, accessSecret)
-	// OAuth1 http.Client will automatically authorize Requests
-	httpClient := config.Client(oauth1.NoContext, token)
+	if bearerToken == "" {
+		fmt.Printf("TWITTER_BEARER_TOKEN environment variable not set")
+		os.Exit(0)
+	}
 
 	// Twitter Client
-	client := twitter.NewClient(httpClient)
+	client := twitter.NewClientWithBearer(http.DefaultClient, bearerToken)
 
 	// Convenience Demux demultiplexed stream messages
 	demux := twitter.NewSwitchDemux()
@@ -32,7 +30,12 @@ func main() {
 		fmt.Println(tweet.Text)
 	}
 	demux.StreamData = func(sd *twitter.StreamData) {
-		fmt.Printf("%v\n", sd)
+		dataJson, err := json.MarshalIndent(sd, "", "  ")
+		if err != nil {
+			fmt.Printf("Failed to marshal StreamData: %s", err)
+		} else {
+			fmt.Printf("StreamData: %s\n", dataJson)
+		}
 	}
 	demux.DM = func(dm *twitter.DirectMessage) {
 		fmt.Println(dm.SenderID)
@@ -43,7 +46,6 @@ func main() {
 
 	fmt.Println("Starting Stream...")
 
-	// FILTER
 	filterParams := &twitter.StreamParams{
 		TweetFields: []string{"created_at", "text", "id", "lang", "public_metrics", "referenced_tweets", "conversation_id", "entities"},
 		Expansions:  []string{"author_id", "referenced_tweets.id", "in_reply_to_user_id", "entities.mentions.username", "referenced_tweets.id.author_id"},
