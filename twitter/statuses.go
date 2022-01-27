@@ -27,7 +27,7 @@ type Tweet struct {
 	InReplyToUserID    string               `json:"in_reply_to_user_id"`
 	Lang               string               `json:"lang"`
 	PossiblySensitive  bool                 `json:"possibly_sensitive"`
-	ReferencedTweets   struct {
+	ReferencedTweets   []struct {
 		Type string `json:"type"`
 		ID   string `json:"id"`
 	} `json:"referenced_tweets,omitempty"`
